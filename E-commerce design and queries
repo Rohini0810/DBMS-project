@@ -1,0 +1,209 @@
+Creating tables:
+
+ CREATE TABLE Cart
+    (
+        Cart_id VARCHAR(7) NOT NULL,
+        PRIMARY KEY(Cart_id)
+    );
+
+    CREATE TABLE Customer
+    (
+        Customer_id VARCHAR(6) NOT NULL,
+        c_pass VARCHAR(10) NOT NULL,
+        Name VARCHAR(20) NOT NULL,
+        Address VARCHAR(20) NOT NULL,
+        Pincode NUMBER(6) NOT NULL,
+        Phone_number_s number(10) NOT NULL,
+        PRIMARY KEY (Customer_id),
+        Cart_id VARCHAR(7) NOT NULL,
+        FOREIGN KEY(Cart_id) REFERENCES cart(Cart_id)
+    );
+
+    CREATE TABLE Seller
+    (
+        Seller_id VARCHAR(6) NOT NULL,
+        s_pass VARCHAR(10) NOT NULL,
+        Name VARCHAR(20) NOT NULL,
+        Address VARCHAR(10) NOT NULL,
+        PRIMARY KEY (Seller_id)
+    );
+
+    CREATE TABLE Seller_Phone_num
+    (
+        Phone_num NUMBER(10) NOT NULL,
+        Seller_id VARCHAR(6) NOT NULL,
+        PRIMARY KEY (Phone_num, Seller_id),
+        FOREIGN KEY (Seller_id) REFERENCES Seller(Seller_id)
+        ON DELETE CASCADE
+    );
+
+    CREATE TABLE Payment
+    (
+        payment_id VARCHAR(7) NOT NULL,
+        payment_date DATE NOT NULL,
+        Payment_type VARCHAR(10) NOT NULL,
+        Customer_id VARCHAR(6) NOT NULL,
+        Cart_id VARCHAR(7) NOT NULL,
+        PRIMARY KEY (payment_id),
+        FOREIGN KEY (Customer_id) REFERENCES Customer(Customer_id),
+        FOREIGN KEY (Cart_id) REFERENCES Cart(Cart_id),
+        total_amount numeric(6)
+    );
+
+    CREATE TABLE Product
+    (
+        Product_id VARCHAR(7) NOT NULL,
+        Type VARCHAR(7) NOT NULL,
+        Color VARCHAR(15) NOT NULL,
+        P_Size VARCHAR(2) NOT NULL,
+        Gender CHAR(1) NOT NULL,
+        Commission NUMBER(2) NOT NULL,
+        Cost NUMBER(5) NOT NULL,
+        Quantity NUMBER(2) NOT NULL,
+        Seller_id VARCHAR(6),
+        PRIMARY KEY (Product_id),
+        FOREIGN KEY (Seller_id) REFERENCES Seller(Seller_id)
+        ON DELETE SET NULL
+    );
+
+    CREATE TABLE Cart_item
+    (
+        Quantity_wished NUMBER(1) NOT NULL,
+        Date_Added DATE NOT NULL,
+        Cart_id VARCHAR(7) NOT NULL,
+        Product_id VARCHAR(7) NOT NULL,
+        FOREIGN KEY (Cart_id) REFERENCES Cart(Cart_id),
+        FOREIGN KEY (Product_id) REFERENCES Product(Product_id),
+        Primary key(Cart_id,Product_id)
+    );
+
+
+Inserting into tables:
+
+    insert into Cart values('crt1011');
+    insert into Cart values('crt1012');
+    insert into Cart values('crt1013');
+
+    insert into Customer values('cid100','ABCM1235','rajat','G-453','632014',9893135876, 'crt1011');
+    insert into Customer values('cid101','ABCd1235','Arjun','G-454','632015',9893135877, 'crt1012');
+    insert into Customer values('cid102','ABCe1235','Akash','G-455','632016',9893135878, 'crt1013');
+
+    insert into Seller values('sid100','12345','aman','delhi cmc');
+    insert into Seller values('sid101','12346','Raj','goa cmc');
+    insert into Seller values('sid102','12347','kuldeep','bnglr cmc');
+
+    insert into Product values('pid1001','jeans','red','32','M',10,10005,20,'sid100');
+    insert into Product values('pid1002','shirts','blue','34','M',11,10006,21,'sid102');
+    insert into Product values('pid1003','shorts','black','32','M',12,10007,22,'sid101');
+
+    insert into Seller_Phone_num values('9943336206','sid100');
+    insert into Seller_Phone_num values('9943336232','sid101');
+    insert into Seller_Phone_num values('9943334545','sid102');
+
+    insert into Cart_item values(3,to_date('10-OCT-1999','dd-mon-yyyy'),'crt1011','pid1001');
+    insert into Cart_item values(4,to_date('11-MAY-1999','dd-mon-yyyy'),'crt1012','pid1002');
+    insert into Cart_item values(2,to_date('04-OCT-1999','dd-mon-yyyy'),'crt1013','pid1003');
+
+
+
+    insert into Payment values('pmt1001',to_date('10-OCT-1999','dd-mon-yyyy'),'online','cid100','crt1011',NULL);
+    insert into Payment values('pmt1002',to_date('13-OCT-1999','dd-mon-yyyy'),'online','cid101','crt1012',NULL);
+    insert into Payment values('pmt1003',to_date('14-OCT-1999','dd-mon-yyyy'),'online','cid102','crt1013',NULL);
+
+
+Queries:
+1.If the customer wants to see details of product present in the cart
+
+select * from product where product_id in(
+        select product_id from Cart_item where (Cart_id in (
+            select Cart_id from Customer where Customer_id='cid100'
+        ))
+    and purchased='NO');
+
+2.If a customer wants to see order history
+        select product_id,Quantity_wished 
+        from Cart_item 
+        where (Cart_id in (select Cart_id from customer where Customer_id='cid101'));
+
+3.If customer wants to modify the cart
+    delete from cart_item where (product_id='pid1001' and Cart_id in (select cart_id from Customer where Customer_id='cid100'));
+
+4.If a seller stops selling his product
+    delete  from seller where seller_id = 'sid100';
+    update product set quantity = 00 where seller_id is NULL;
+
+5.If admin want to see what are the product purchased on the particular date
+ select product_id from cart_item where (date_added='11-May-99');
+
+6.How much product sold on particular date
+     select count(product_id) count_pid,date_added from Cart_item where purchased='Y'  group by(date_added);
+
+7.Show the details of the customer who has not purchased anything
+       Select * from customer where customer_id not in (select customer_id from Payment);
+
+functions:
+Function which returns total number of products which a particular seller sells
+1.    create or replace function totalProducts(sId in varchar)
+    return number
+    is
+    total number(2):=0;
+    begin
+    select count(*) into total
+    from product
+    where seller_id=sId;
+    return total;
+    end;
+    /
+
+  execution:
+    declare
+    c number(2);
+    begin
+    c:=totalProducts('sid102');
+    dbms_output.put_line('Total products is : '|| c);
+    end;
+
+procedures:
+Procedure which returns the total quantity of product with the given ID
+ create or replace procedure prod_details(p_id in varchar)
+    is
+    quan number(2);
+    begin
+    select quantity into quan from product where product_id=p_id;
+    exception
+    when no_data_found then
+    dbms_output.put_line('Sorry no such product exist !!');
+    end;
+    /
+
+Triggers:
+Trigger that will execute before inserting new customer to database and inserting a new cartId to the cart_items table
+    create or replace function numCartId(cd in varchar)
+    return number
+    is
+    total number(2):=0;
+    begin
+    select count(*) into total
+    from cart_item
+    where cart_id=cd;
+    return total;
+    end;
+
+  Trigger
+    Create or replace trigger before_customer
+    before insert
+    on
+    customer
+    for each row
+    declare
+    c varchar(10);
+    n number(2);
+    begin
+    c:= :new.cart_id;
+    n:=numCartId(c);
+    if n>0 then
+    dbms_output.put_line('Sorry');
+    end if;
+    insert into cart values(c);
+    end;
+
