@@ -1,2 +1,2 @@
 # DBMS-project
-Basic implementation of e-commerce management system
+Basic implementation of E-commerce management system
